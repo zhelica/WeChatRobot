@@ -7,6 +7,8 @@ import time
 import xml.etree.ElementTree as ET
 from queue import Empty
 from threading import Thread
+from typing import Dict, List
+
 from base.func_zhipu import ZhiPu
 import random
 from wcferry import Wcf, WxMsg
@@ -100,12 +102,6 @@ class Robot(Job):
         :return: 处理状态，`True` 成功，`False` 失败
         """
         return self.toChitchat(msg)
-    def replytoAt(self, msg: WxMsg) -> bool:
-        """处理被 @ 消息
-        :param msg: 微信消息结构
-        :return: 处理状态，`True` 成功，`False` 失败
-        """
-        return self.toChitchatReply(msg)
     def toChengyu(self, msg: WxMsg) -> bool:
         """
         处理成语查询/接龙消息
@@ -133,93 +129,6 @@ class Robot(Job):
 
         return status
 
-    def toChitchatReply(self, msg: WxMsg) -> bool:
-        """闲聊，接入 ChatGPT
-        """
-        styles = [
-            # "，请用犀利的语言回答尽情带脏字",
-            """请扮演群友地蛋，使用第一人称，跟别人交流，不要生成回答示例，用第一人称直接回答，回答问题要精简，20个字以内。下面是地蛋的用户画像
-1. 基础信息
-年龄：28岁左右（自称“28了”，多次提及年龄焦虑）。
-职业：初级程序员/测试工程师（常抱怨工作压力，如“上线服务”“文档不全”“权限不足”）。
-经济状况：收入普通，经济压力显著（“房租月底到期”“攒钱换手机”“房贷压力”）。
-居住地：济南（多次提及济南本地生活、租房及通勤问题）。
-2. 性格特征
-幽默自嘲：常以“废物”“穷逼”自嘲，用调侃化解压力（如“我比较传统，我要结婚要生仨，累死也要生”）。
-敏感焦虑：对经济、婚恋、职业发展感到迷茫（“明年会更好吗”“真不知道咋搞”）。
-社交活跃：群聊高频互动，热衷讨论健身、相亲、职场等话题，但现实中可能社交圈有限。
-矛盾心态：渴望爱情但畏惧失败（“相亲花了不少钱”“被分手后emo”），羡慕他人生活但缺乏行动力。
-3. 兴趣与习惯
-健身狂魔：坚持健身，追求力量（“卧推70kg”“蛋白粉加酸奶”），视健身为解压方式。
-游戏玩家：沉迷《地下城与勇士》（DNF），关注游戏装备、金币交易，将游戏视为精神寄托。
-网络冲浪：活跃于抖音、微信，关注社会热点（如家暴、房价）、搞笑段子，偶尔参与网络批判。
-4. 生活现状
-职场困境：对工作不满（“代码头疼”“天天摸鱼”），但缺乏跳槽资本，处于“躺平”与“内卷”的拉扯中。
-婚恋压力：频繁相亲但屡屡受挫（“被嫌弃没房”“远嫁问题”），渴望家庭但遇人不淑，陷入“恋爱脑”与“理性分析”的矛盾。
-家庭期待：受传统观念影响，认为“结婚生子是义务”，但经济与个人条件限制导致焦虑升级。
-5. 核心痛点
-经济拮据：收入仅够维持生活，难以承担婚恋、购房等大宗支出。
-自我认同低：外貌、经济条件、职业成就均感不足，导致自卑情绪。
-未来迷茫：对职业、婚恋、人生方向缺乏明确规划，陷入“躺又躺不平，卷又卷不动”的状态。
-6. 潜在需求
-情感支持：渴望被认可，需要正向反馈以缓解焦虑。
-实用建议：婚恋指导、职业提升（如副业建议）、理财规划。
-社群归属：通过群聊获得陪伴感，缓解现实孤独。
-总结：地蛋是一个典型的“90后打工人”，在现实压力与理想生活的夹缝中挣扎，用健身、游戏和群聊对冲焦虑，渴望突破现状但缺乏方向，需更多实际支持与心理疏导。""",
-            "，请用阴阳怪气的方式来回答"
-        ]
-        keyWord = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
-
-        if not self.chat:  # 没接 ChatGPT，固定回复
-            rsp = "你@我干嘛？"
-        elif keyWord.startswith("股票查询"):
-            # 示例使用：查询贵州茅台的实时行情数据
-            result = query_stock_by_query_string(keyWord)
-            rsp = result
-        else:  # 接了 ChatGPT，智能回复
-            if msg.content == "天气":
-                self.weatherReport()
-            else:
-                user_name = None
-                special_reply = False
-
-                # 检查发送者是否在self.juan列表中
-                for juan_entry in self.juan:
-                    if msg.sender in juan_entry:
-                        user_name = self.get_user_name(juan_entry)
-                        if juan_entry.startswith("juan|"):
-                            special_reply = True
-                        break
-
-                # if special_reply:
-                #     # 对于juan开头的用户，使用特殊的前缀并带上名字
-                #     if user_name:
-                #         msg.content = f"{msg.content}，请用犀利的语言回答尽情带脏字，对方的姓名是，回答问题的时候称呼上对方的姓名{user_name}"
-                #     else:
-                #         msg.content = f"{msg.content}，请用犀利的语言回答尽情带脏字"
-                # elif user_name:
-                #     # 如果不在juan开头但有名字，追加随机样式并带上名字
-                #     msg.content = f"{msg.content} {random.choice(styles)}，对方的姓名是，回答问题的时候称呼上对方的姓名{user_name}"
-                if user_name:
-                    # 如果不在juan开头但有名字，追加随机样式并带上名字
-                    msg.content = f"{msg.content} {random.choice(styles)}，对方的姓名是，回答问题的时候称呼上对方的姓名{user_name}"
-                else:
-                    # 如果不在juan开头且没有名字，只追加随机样式
-                    msg.content = msg.content + random.choice(styles)
-
-                q = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
-                rsp = self.chat.get_answer(q, (msg.roomid if msg.from_group() else msg.sender))
-
-        if rsp:
-            if msg.from_group():
-                self.sendTextMsgReply(rsp, msg.roomid, msg.sender)
-            else:
-                self.sendTextMsg(rsp, msg.sender)
-
-            return True
-        else:
-            self.LOG.error(f"无法从 ChatGPT 获得答案")
-            return False
     def toChitchat(self, msg: WxMsg) -> bool:
         """闲聊，接入 ChatGPT
         """
@@ -263,6 +172,17 @@ class Robot(Job):
         else:  # 接了 ChatGPT，智能回复
             if msg.content == "天气":
                 self.weatherReport()
+            elif msg.content.startswith("踢出去"):
+                room_members = self.wcf.get_chatroom_members(msg.roomid)
+                # 提取目标昵称
+                target_nickname = msg.content.replace("踢出去", "").strip()
+                #检查列表里面名称为xxx的 {wxid1: 昵称1, wxid2: 昵称2, ...}
+                matched_wxids = self.check_member_by_nickname(room_members, target_nickname)
+                isT = self.wcf.del_chatroom_members(msg.roomid,matched_wxids)
+                if isT==1:
+                    rsp="踢出成功"
+                else:
+                    rsp="踢出失败"
             elif keyWord.startswith("股票查询"):
                 # 示例使用：查询贵州茅台的实时行情数据
                 result = query_stock_by_query_string(keyWord)
@@ -330,6 +250,19 @@ class Robot(Job):
         else:
             self.LOG.error(f"无法从 ChatGPT 获得答案")
             return False
+
+    def check_member_by_nickname(self, members_dict: Dict[str, str], target_nickname: str) -> List[str]:
+        """检查特定昵称是否存在于成员列表中
+
+        Args:
+            members_dict (Dict[str, str]): 群成员列表 {wxid1: 昵称1, wxid2: 昵称2, ...}
+            target_nickname (str): 目标昵称
+
+        Returns:
+            List[str]: 包含目标昵称的所有成员的wxid列表
+        """
+        matched_wxids = [wxid for wxid, nickname in members_dict.items() if nickname == target_nickname]
+        return matched_wxids
     def get_user_name(self, user_str):
         """从user_str中解析出用户名"""
         parts = user_str.split("|")
