@@ -48,6 +48,7 @@ class Robot(Job):
         self.juan = self.config.juan
         self.nokeyword = self.config.noKeyWord
         self.normal = self.config.normal
+        self.prohibitedWords = self.config.prohibitedWords
 
         if ChatType.is_in_chat_types(chat_type):
             if chat_type == ChatType.TIGER_BOT.value and TigerBot.value_check(self.config.TIGERBOT):
@@ -172,15 +173,17 @@ class Robot(Job):
         else:  # 接了 ChatGPT，智能回复
             if msg.content == "天气":
                 self.weatherReport()
-            elif msg.content.startswith("踢出去"):
-                room_members = self.wcf.get_chatroom_members(msg.roomid)
+            elif self.contains_keywords(keyWord):
+                #获取群成员
+                # room_members = self.wcf.get_chatroom_members(msg.roomid)
                 # 提取目标昵称
-                target_nickname = msg.content.replace("踢出去", "").strip()
+                # target_nickname = keyWord.replace("踢出去", "").strip()
                 #检查列表里面名称为xxx的 {wxid1: 昵称1, wxid2: 昵称2, ...}
-                matched_wxids = self.check_member_by_nickname(room_members, target_nickname)
-                isT = self.wcf.del_chatroom_members(msg.roomid,matched_wxids)
+                # matched_wxids = self.check_member_by_nickname(room_members, target_nickname)
+                isT = self.wcf.del_chatroom_members(msg.roomid,msg.sender)
                 if isT==1:
-                    rsp="踢出成功"
+                    rsp="你发表了不当言论，现将你移出群聊✈️\n 欢迎再次进来。\n请大家文明交流，谢谢！"
+                    self.wcf.invite_chatroom_members(msg.roomid, msg.sender)
                 else:
                     rsp="踢出失败"
             elif keyWord.startswith("股票查询"):
@@ -222,8 +225,9 @@ class Robot(Job):
                     else:
                         # 如果不在juan开头且没有名字，只追加随机样式
                         msg.content = f"{msg.content} {random.choice(styles)}，对方的姓名不清楚，不用称呼对方的姓名"
-
+                self.LOG.info(f"消息类型========{msg.type}")  # 使用f-string打印信息
                 q = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
+                self.LOG.info(f"问题内容========{q}")  # 使用f-string打印信息
                 rsp = self.chat.get_answer(q, (msg.roomid if msg.from_group() else msg.sender))
         # if not self.chat:  # 没接 ChatGPT，固定回复
         #     rsp = "你@我干嘛？"
@@ -251,7 +255,22 @@ class Robot(Job):
             self.LOG.error(f"无法从 ChatGPT 获得答案")
             return False
 
-    def check_member_by_nickname(self, members_dict: Dict[str, str], target_nickname: str) -> List[str]:
+    def contains_keywords(self,sentence: str) -> bool:
+        """判断句子中是否包含指定关键词
+
+        Args:
+            sentence (str): 要检查的句子
+            keywords (list): 关键词列表
+
+        Returns:
+            bool: 如果句子中包含任意一个关键词，则返回 True，否则返回 False
+        """
+        keywords=self.prohibitedWords
+        for keyword in keywords:
+            if keyword in sentence:
+                return True
+        return False
+    def check_member_by_nickname(self, members_dict: Dict[str, str], target_nickname: str) -> str:
         """检查特定昵称是否存在于成员列表中
 
         Args:
@@ -259,10 +278,10 @@ class Robot(Job):
             target_nickname (str): 目标昵称
 
         Returns:
-            List[str]: 包含目标昵称的所有成员的wxid列表
+            str: 包含目标昵称的所有成员的wxid列表，多个wxid用逗号隔开
         """
         matched_wxids = [wxid for wxid, nickname in members_dict.items() if nickname == target_nickname]
-        return matched_wxids
+        return ','.join(matched_wxids)
     def get_user_name(self, user_str):
         """从user_str中解析出用户名"""
         parts = user_str.split("|")
@@ -287,16 +306,30 @@ class Robot(Job):
             if msg.is_at(self.wxid):  # 被@
                 self.toAt(msg)
 
-            # else:
-            #     # 对于没有@机器人的消息，根据一定概率随机决定是否回复
-            #
-            #     reply_prob = 0.1  # 设置回复的概率，比如20%的几率回复
-            #
-            #     if random.random() < reply_prob:
-            #         # 使用与@时相同的回复方法或自定义一个不同的方法
-            #
-            #         self.replytoAt(msg)  # 或者定义一个新的方法如self.randomReply(msg)
+            else:
+                # 对于没有@机器人的消息，根据一定概率随机决定是否回复
 
+                # reply_prob = 0.1  # 设置回复的概率，比如20%的几率回复
+                #
+                # if random.random() < reply_prob:
+                #     # 使用与@时相同的回复方法或自定义一个不同的方法
+                #
+                #     self.replytoAt(msg)  # 或者定义一个新的方法如self.randomReply(msg)
+                keyWord = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
+                if self.contains_keywords(keyWord):
+                    # 获取群成员
+                    # room_members = self.wcf.get_chatroom_members(msg.roomid)
+                    # 提取目标昵称
+                    # target_nickname = keyWord.replace("踢出去", "").strip()
+                    # 检查列表里面名称为xxx的 {wxid1: 昵称1, wxid2: 昵称2, ...}
+                    # matched_wxids = self.check_member_by_nickname(room_members, target_nickname)
+                    isT = self.wcf.del_chatroom_members(msg.roomid, msg.sender)
+                    if isT == 1:
+                        rsp = "你发表了不当言论，现将你移出群聊✈️\n 欢迎再次进来。\n请大家文明交流，谢谢！"
+                        self.wcf.invite_chatroom_members(msg.roomid, msg.sender)
+                    else:
+                        rsp = "踢出失败"
+                    self.sendTextMsg(rsp, msg.roomid, msg.sender)
             return  # 处理完群聊信息，后面就不需要处理了
         self.LOG.info(f"消息类型========{msg.type}")  # 使用f-string打印信息
         # 非群聊信息，按消息类型进行处理
@@ -326,8 +359,8 @@ class Robot(Job):
                 else:
                     self.toChitchat(msg)
             else:
-                return 0
-                #self.toChitchat(msg)  # 闲聊
+                # return 0
+                self.toChitchat(msg)  # 闲聊
 
     def onMsg(self, msg: WxMsg) -> int:
         try:

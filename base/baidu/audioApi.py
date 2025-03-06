@@ -23,6 +23,3 @@ def convert_mp3_to_aac(mp3_file, output_file):
         "-movflags", "+faststart",
         "-brand", "mp42"
     ])
-
-# 示例调用
-convert_mp3_to_aac("E:/data/WeChat Files/audio/262193221195193829.mp3", "E:/data/WeChat Files/audio/output.m4a")

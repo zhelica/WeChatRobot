@@ -43,5 +43,6 @@ class Config(object):
         self.ZhiPu = yconfig.get("zhipu", {})
         self.juan = yconfig["groups"]["juan"]
         self.noKeyWord = yconfig["groups"]["noKeyWord"]
+        self.prohibitedWords = yconfig["groups"]["prohibitedWords"]
         self.normal = yconfig["groups"]["normal"]
         self.SEND_RATE_LIMIT = yconfig.get("send_rate_limit", 0)
