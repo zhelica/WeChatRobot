@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import requests
 import logging
 import random
 import re
@@ -49,6 +49,9 @@ class Robot(Job):
         self.nokeyword = self.config.noKeyWord
         self.normal = self.config.normal
         self.prohibitedWords = self.config.prohibitedWords
+        self.command = self.config.command
+        self.command_format = self.config.command_format
+
 
         if ChatType.is_in_chat_types(chat_type):
             if chat_type == ChatType.TIGER_BOT.value and TigerBot.value_check(self.config.TIGERBOT):
@@ -135,44 +138,24 @@ class Robot(Job):
         """
         styles = [
             # "，请用犀利的语言回答尽情带脏字",
-            """请扮演群友地蛋，使用第一人称，跟别人交流，不要生成回答示例，用第一人称直接回答，回答问题要精简，20个字以内。下面是地蛋的用户画像
-1. 基础信息
-年龄：28岁左右（自称“28了”，多次提及年龄焦虑）。
-职业：初级程序员/测试工程师（常抱怨工作压力，如“上线服务”“文档不全”“权限不足”）。
-经济状况：收入普通，经济压力显著（“房租月底到期”“攒钱换手机”“房贷压力”）。
-居住地：济南（多次提及济南本地生活、租房及通勤问题）。
-2. 性格特征
-幽默自嘲：常以“废物”“穷逼”自嘲，用调侃化解压力（如“我比较传统，我要结婚要生仨，累死也要生”）。
-敏感焦虑：对经济、婚恋、职业发展感到迷茫（“明年会更好吗”“真不知道咋搞”）。
-社交活跃：群聊高频互动，热衷讨论健身、相亲、职场等话题，但现实中可能社交圈有限。
-矛盾心态：渴望爱情但畏惧失败（“相亲花了不少钱”“被分手后emo”），羡慕他人生活但缺乏行动力。
-3. 兴趣与习惯
-健身狂魔：坚持健身，追求力量（“卧推70kg”“蛋白粉加酸奶”），视健身为解压方式。
-游戏玩家：沉迷《地下城与勇士》（DNF），关注游戏装备、金币交易，将游戏视为精神寄托。
-网络冲浪：活跃于抖音、微信，关注社会热点（如家暴、房价）、搞笑段子，偶尔参与网络批判。
-4. 生活现状
-职场困境：对工作不满（“代码头疼”“天天摸鱼”），但缺乏跳槽资本，处于“躺平”与“内卷”的拉扯中。
-婚恋压力：频繁相亲但屡屡受挫（“被嫌弃没房”“远嫁问题”），渴望家庭但遇人不淑，陷入“恋爱脑”与“理性分析”的矛盾。
-家庭期待：受传统观念影响，认为“结婚生子是义务”，但经济与个人条件限制导致焦虑升级。
-5. 核心痛点
-经济拮据：收入仅够维持生活，难以承担婚恋、购房等大宗支出。
-自我认同低：外貌、经济条件、职业成就均感不足，导致自卑情绪。
-未来迷茫：对职业、婚恋、人生方向缺乏明确规划，陷入“躺又躺不平，卷又卷不动”的状态。
-6. 潜在需求
-情感支持：渴望被认可，需要正向反馈以缓解焦虑。
-实用建议：婚恋指导、职业提升（如副业建议）、理财规划。
-社群归属：通过群聊获得陪伴感，缓解现实孤独。
-总结：地蛋是一个典型的“90后打工人”，在现实压力与理想生活的夹缝中挣扎，用健身、游戏和群聊对冲焦虑，渴望突破现状但缺乏方向，需更多实际支持与心理疏导。""",
+            """以第一人称回答问题，扮演人类，与人类正常交流，而不只是刻板的回答问题，日常交流要简介，不要一下子很多字，一大篇文章""",
             # "，请用烦人整体画饼的领导的方式来回答"
         ]
-        styles2 = ["请用就像和朋友聊天一样的语气，以第一人称跟用户对话式交流，加入情感元素，不再是回答机器，回答问题要简单精练，并且适当情况下引导用户继续聊天，也不必每次引导。"]
         keyWord = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
-
+        song_name = None
+        for command in self.command:
+            if keyWord.startswith(command):
+                # 截取关键词之后的部分作为歌名
+                song_name = keyWord[len(command):].strip()
+                break
         if not self.chat:  # 没接 ChatGPT，固定回复
             rsp = "你@我干嘛？"
         else:  # 接了 ChatGPT，智能回复
             if msg.content == "天气":
                 self.weatherReport()
+            elif song_name:
+                result = self.handle_music(msg, song_name)  # 确保 handle_music 执行完毕并获取其返回值
+                rsp = result
             elif self.contains_keywords(keyWord):
                 #获取群成员
                 # room_members = self.wcf.get_chatroom_members(msg.roomid)
@@ -208,10 +191,10 @@ class Robot(Job):
                 if msg.roomid in self.normal:
                     if user_name:
                         # 如果不在juan开头但有名字，追加随机样式并带上名字
-                        msg.content = f"{msg.content} {random.choice(styles2)}，对方的姓名是，回答问题的时候称呼上对方的姓名{user_name}"
+                        msg.content = f"{msg.content} {random.choice(styles)}，对方的姓名是，回答问题的时候称呼上对方的姓名{user_name}"
                     else:
                         # 如果不在juan开头且没有名字，只追加随机样式
-                        msg.content = f"{msg.content} {random.choice(styles2)}，对方的姓名不清楚，不用称呼对方的姓名"
+                        msg.content = f"{msg.content} {random.choice(styles)}，对方的姓名不清楚，不用称呼对方的姓名"
                 else:
                     if special_reply:
                         # 对于juan开头的用户，使用特殊的前缀并带上名字
@@ -245,7 +228,12 @@ class Robot(Job):
         #         rsp = self.chat.get_answer(q, (msg.roomid if msg.from_group() else msg.sender))
 
         if rsp:
-            if msg.from_group():
+            if song_name:
+                print("发送--------------------------------"+rsp)
+                self.wcf.forward_msg(5342065067458527220,msg.roomid)
+                # num = self.wcf.send_xml(msg.roomid, rsp, 3,None)  # 使用 handle_music 返回的结果
+                # print(f"返回值============{num}")
+            elif msg.from_group():
                 self.sendTextMsg(rsp, msg.roomid, msg.sender)
             else:
                 self.sendTextMsg(rsp, msg.sender)
@@ -296,6 +284,8 @@ class Robot(Job):
         receivers = msg.roomid
         self.sendTextMsg(content, receivers, msg.sender)
         """
+        self.LOG.info(f"消息类型========{msg.type}")  # 使用f-string打印信息
+        self.LOG.info(f"消息id========{msg.id}")  # 使用f-string打印信息
 
         # 群聊消息
         if msg.from_group():
@@ -331,13 +321,11 @@ class Robot(Job):
                         rsp = "踢出失败"
                     self.sendTextMsg(rsp, msg.roomid, msg.sender)
             return  # 处理完群聊信息，后面就不需要处理了
-        self.LOG.info(f"消息类型========{msg.type}")  # 使用f-string打印信息
         # 非群聊信息，按消息类型进行处理
         if msg.type == 37:  # 好友请求
             self.autoAcceptFriendRequest(msg)
         elif msg.type == 34:  # 语音消息
             self.LOG.info(f"消息类型========{msg.type}")  # 使用f-string打印信息
-            self.LOG.info(f"消息内容========{msg}")  # 使用f-string打印信息
             audioDir = self.wcf.get_audio_msg(id=msg.id, dir="E:/data/WeChat Files/audio")
             audioNewDir = audioDir.replace("mp3","m4a")
             audioApi.convert_mp3_to_aac(audioDir,audioNewDir)
@@ -359,8 +347,8 @@ class Robot(Job):
                 else:
                     self.toChitchat(msg)
             else:
-                # return 0
-                self.toChitchat(msg)  # 闲聊
+                return 0
+                # self.toChitchat(msg)  # 闲聊
 
     def onMsg(self, msg: WxMsg) -> int:
         try:
@@ -508,3 +496,91 @@ class Robot(Job):
         report = Weather(self.config.CITY_CODE).get_weather()
         for r in receivers:
             self.sendTextMsg(report, r)
+    def handle_music(self, msg: WxMsg,songName:str)-> None:
+        # 使用 requests 库进行同步 HTTP 请求
+        # response = requests.get(
+        #     f"https://www.hhlqilongzhu.cn/api/dg_wyymusic.php?gm={songName}&n=1&br=2&type=json"
+        # )
+        response = requests.get(f"https://www.hhlqilongzhu.cn/api/dg_wyymusic.php?gm={songName}&n=1&br=2&type=json", timeout=15)
+        # data_json = r.json()
+        # # 确保请求成功
+        # response.raise_for_status()
+
+        # 解析 JSON 数据
+        data = response.json()
+        # 提取所需信息
+        title = data["title"]
+        singer = data["singer"]
+        url = data["link"]
+        music_url = data["music_url"].split("?")[0]
+        cover_url = data["cover"]
+        lyric = data["lrc"]
+
+        # 构造 XML 字符串
+        xml = f"""<?xml version="1.0"?>
+<msg>
+        <appmsg appid="" sdkver="0">
+                <title>弱水三千 (0.8x DJ苏熠鸣)</title>
+                <des>苏熠鸣</des>
+                <type>3</type>
+                <action>view</action>
+                <url>https://music.163.com/#/song?id=2614435703</url>
+                <lowurl>https://music.163.com/#/song?id=2614435703</lowurl>
+                <dataurl>https://m701.music.126.net/20250306175001/49ca92c14e034bfc41b8c54f7f37c339/jdymusic/obj/wo3DlMOGwrbDjj7DisKw/45065516559/9d3c/94da/c911/898b986f8a36d9e184c0a7f9cad60b71.mp3</dataurl>
+                <lowdataurl>https://m701.music.126.net/20250306175001/49ca92c14e034bfc41b8c54f7f37c339/jdymusic/obj/wo3DlMOGwrbDjj7DisKw/45065516559/9d3c/94da/c911/898b986f8a36d9e184c0a7f9cad60b71.mp3</lowdataurl>
+                <songalbumurl>https://p1.music.126.net/gfhjZuI0aaBgh1ZPyCjZqg==/109951169846003643.jpg</songalbumurl>
+                <songlyric>[by:苏熠鸣]
+[00:20.397]梨花飘落在你窗前
+[00:24.687]画中伊人在闺中怨
+[00:29.320]谁把思念轻描淡写
+[00:33.445]只想留住时间为你穿越
+[00:37.795]我停步白墙青瓦的屋檐
+[00:42.389]等你撑伞走过我身边
+[00:46.867]古镇上
+[00:48.094]谁家的炊烟在为我们酝酿当年的月圆
+[00:56.091]—双鸳
+[00:58.163]一双鸳鸯戏在雨中那水面
+[01:02.726]就像思念苦里透着甜
+[01:07.214]我不问弱水三千几人能为我怨
+[01:11.661]轮回百转只求陪你续前缘
+[01:16.223]一曲悠悠弦断邂逅的古街
+[01:20.801]爱的桥段叫我怎么写
+[01:25.697]那弱水三千若能把那今生湮灭
+[01:29.688]前世亏欠我愿等来生再还
+[02:15.674]篆刻离别烟雨江南
+[02:20.153]你的美我不忍落款
+[02:24.641]牧笛吹皱岁月的脸
+[02:28.886]红尘相笑看偏偏为你着恋
+[02:33.137]你手绣梅花报春的眉间
+[02:37.692]溢满永世不悔的无邪
+[02:42.099]牌坊上斑驳的记载
+[02:46.734]那是你为等我刻下的誓言
+[02:51.271]一双鸳
+[02:53.505]一双鸳鸯戏在雨中那水面
+[02:57.977]就像思念苦里透着甜
+[03:02.533]我不问弱水三千几人能为我怨
+[03:07.094]轮回百转只求陪你续前缘
+[03:11.623]一曲悠悠弦断邂逅的古街
+[03:16.000]爱的桥段叫我怎么写
+[03:20.664]那弱水三千若能把那今生湮灭
+[03:25.029]前世亏欠我愿等来生再还</songlyric>
+                <appattach>
+                        <cdnthumbaeskey />
+                        <aeskey />
+                </appattach>
+                <thumburl>https://p1.music.126.net/gfhjZuI0aaBgh1ZPyCjZqg==/109951169846003643.jpg</thumburl>
+                <webviewshared>
+                        <jsAppId><![CDATA[]]></jsAppId>
+                        <publisherReqId><![CDATA[0]]></publisherReqId>
+                </webviewshared>
+        </appmsg>
+        <fromusername>wxid_c0yjh5nyvk3e22</fromusername>
+        <scene>0</scene>
+        <appinfo>
+                <version>1</version>
+                <appname></appname>
+        </appinfo>
+        <commenturl></commenturl>
+</msg>
+"""
+        return xml

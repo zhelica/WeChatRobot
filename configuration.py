@@ -45,4 +45,7 @@ class Config(object):
         self.noKeyWord = yconfig["groups"]["noKeyWord"]
         self.prohibitedWords = yconfig["groups"]["prohibitedWords"]
         self.normal = yconfig["groups"]["normal"]
+        self.command = yconfig["Music"]["command"]
+        self.command_format = yconfig["Music"]["command-format"]
+
         self.SEND_RATE_LIMIT = yconfig.get("send_rate_limit", 0)
