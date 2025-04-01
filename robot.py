@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import json
+
 import requests
 import logging
 import random
@@ -31,6 +33,7 @@ from base.quantization import query_stock_by_query_string,query_index_by_query_s
 from time import sleep
 import base.baidu.asr_json as baidu
 import base.baidu.audioApi as audioApi
+import base.zhiban.zhiban as zhiban
 __version__ = "39.2.4.0"
 
 
@@ -51,8 +54,6 @@ class Robot(Job):
         self.prohibitedWords = self.config.prohibitedWords
         self.command = self.config.command
         self.command_format = self.config.command_format
-
-
         if ChatType.is_in_chat_types(chat_type):
             if chat_type == ChatType.TIGER_BOT.value and TigerBot.value_check(self.config.TIGERBOT):
                 self.chat = TigerBot(self.config.TIGERBOT)
@@ -138,7 +139,7 @@ class Robot(Job):
         """
         styles = [
             # "，请用犀利的语言回答尽情带脏字",
-            """以第一人称回答问题，扮演人类，与人类正常交流，而不只是刻板的回答问题，日常交流要简介，不要一下子很多字，一大篇文章""",
+            """以第一人称回答问题，扮演人类，与人类正常交流，而不只是刻板的回答问题，日常交流要简介，不要一下子很多字，一大篇文章。群内简介：群里最有钱的是咖总""",
             # "，请用烦人整体画饼的领导的方式来回答"
         ]
         keyWord = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
@@ -486,7 +487,14 @@ class Robot(Job):
         news = News().get_important_news()
         for r in receivers:
             self.sendTextMsg(news, r)
+    def zhiban(self) -> None:
+        params = zhiban.get_duty_info()
+        receivers = params["id"]
+        content = params["content"]
+        if not receivers:
+            return
 
+        self.sendTextMsg(content, content)
     def weatherReport(self) -> None:
         receivers = self.config.WEATHER
         if not receivers or not self.config.CITY_CODE:
