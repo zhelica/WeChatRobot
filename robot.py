@@ -141,7 +141,7 @@ class Robot(Job):
         """
         styles = [
             # "，请用犀利的语言回答尽情带脏字",
-            """以第一人称回答问题，扮演人类，与人类正常交流，而不只是刻板的回答问题，日常交流要简介，不要一下子很多字，一大篇文章。群内简介：群里最有钱的是咖总""",
+            """以第一人称回答问题，扮演人类，与人类正常交流，而不只是刻板的回答问题，日常交流简洁，可以吐槽，可以阴阳怪气，也可以说脏话，不要一下子很多字，一大篇文章。""",
             # "，请用烦人整体画饼的领导的方式来回答"
         ]
         keyWord = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
@@ -355,9 +355,6 @@ class Robot(Job):
             self.sayHiToNewFriend(msg)
 
         elif msg.type == 0x01:  # 文本消息
-            contacts = self.wcf.get_contacts()
-            # 打印方法返回内容
-            print(contacts)
             # 让配置加载更灵活，自己可以更新配置。也可以利用定时任务更新。
             if msg.from_self():
                 if msg.content == "^更新$":
