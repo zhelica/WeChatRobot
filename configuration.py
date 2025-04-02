@@ -47,5 +47,6 @@ class Config(object):
         self.normal = yconfig["groups"]["normal"]
         self.command = yconfig["Music"]["command"]
         self.command_format = yconfig["Music"]["command-format"]
+        self.zhiban = yconfig["zhiban"]
 
         self.SEND_RATE_LIMIT = yconfig.get("send_rate_limit", 0)

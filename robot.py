@@ -33,7 +33,7 @@ from base.quantization import query_stock_by_query_string,query_index_by_query_s
 from time import sleep
 import base.baidu.asr_json as baidu
 import base.baidu.audioApi as audioApi
-import base.zhiban.zhiban as zhiban
+from base.zhiban.zhiban import DutyScheduler
 __version__ = "39.2.4.0"
 
 
@@ -54,6 +54,8 @@ class Robot(Job):
         self.prohibitedWords = self.config.prohibitedWords
         self.command = self.config.command
         self.command_format = self.config.command_format
+        self.zhiban = self.config.zhiban
+        self.zhibanMethod = DutyScheduler(self.config)
         if ChatType.is_in_chat_types(chat_type):
             if chat_type == ChatType.TIGER_BOT.value and TigerBot.value_check(self.config.TIGERBOT):
                 self.chat = TigerBot(self.config.TIGERBOT)
@@ -157,6 +159,21 @@ class Robot(Job):
             elif song_name:
                 result = self.handle_music(msg, song_name)  # 确保 handle_music 执行完毕并获取其返回值
                 rsp = result
+            elif msg.roomid in self.zhiban["enable"]:
+                if keyWord.startswith("值班"):
+                    # rsp = zhiban.get_duty_info()["content"]
+                    rsp = self.zhibanMethod.get_future_duty_by_id(msg.sender)["content"]
+
+                    # if not msg.sender:
+                    #     return
+                    # ats = ""
+                    # ats += f" @{self.wcf.get_alias_in_chatroom(msg.sender, msg.roomid)}"
+                    # self.wcf.send_text(f"{ats}\n\n{msg.content}", msg.roomid, msg.sender)
+                    #
+                elif keyWord.startswith("本月值班"):
+                    # rsp = zhiban.get_duty_info()["content"]
+                    rsp = self.zhibanMethod.get_monthly_duty_info()["content"]
+
             elif self.contains_keywords(keyWord):
                 #获取群成员
                 # room_members = self.wcf.get_chatroom_members(msg.roomid)
@@ -338,6 +355,9 @@ class Robot(Job):
             self.sayHiToNewFriend(msg)
 
         elif msg.type == 0x01:  # 文本消息
+            contacts = self.wcf.get_contacts()
+            # 打印方法返回内容
+            print(contacts)
             # 让配置加载更灵活，自己可以更新配置。也可以利用定时任务更新。
             if msg.from_self():
                 if msg.content == "^更新$":
@@ -487,14 +507,23 @@ class Robot(Job):
         news = News().get_important_news()
         for r in receivers:
             self.sendTextMsg(news, r)
-    def zhiban(self) -> None:
-        params = zhiban.get_duty_info()
+    def zhibanReport(self) -> None:
+        params = self.zhibanMethod.get_duty_info()
         receivers = params["id"]
         content = params["content"]
+        print("content======="+content)
+        print("receivers======="+receivers)
+        roomid = self.zhiban["enable"][0]
+        print("roomid======="+roomid)
+
         if not receivers:
             return
+        ats = ""
+        ats += f" @{self.wcf.get_alias_in_chatroom(receivers, roomid)}"
+        self.wcf.send_text(f"{ats}\n\n{content}", roomid, receivers)
+        # self.wcf.send_text(f"{content}", "26202314469@chatroom", receivers)
 
-        self.sendTextMsg(content, content)
+        # self.sendTextMsg(content, receivers)
     def weatherReport(self) -> None:
         receivers = self.config.WEATHER
         if not receivers or not self.config.CITY_CODE:
