@@ -507,6 +507,11 @@ class Robot(Job):
     def zhibanReport(self) -> None:
         params = self.zhibanMethod.get_duty_info()
         receivers = params["id"]
+        name = params["name"]#贺雨琦
+        remarks = params["remarks"]#备注接口
+        date = params["date"]#2025年4月2日
+
+
         content = params["content"]
         print("content======="+content)
         print("receivers======="+receivers)
@@ -518,6 +523,16 @@ class Robot(Job):
         ats = ""
         ats += f" @{self.wcf.get_alias_in_chatroom(receivers, roomid)}"
         self.wcf.send_text(f"{ats}\n\n{content}", roomid, receivers)
+
+        if remarks:
+            output1 = f"""<签到>{date} 服务请求值班人员：{name} 签到"""
+            output2 = f"""<签到>{date} 接口值班人员：{name} 签到"""
+            self.sendTextMsg(output1, roomid)
+            self.sendTextMsg(output2, roomid)
+        else:
+            output1 = f"<签到>{date} 服务请求值班人员：{name} 签到"
+            self.sendTextMsg(output1, roomid)
+
         # self.wcf.send_text(f"{content}", "26202314469@chatroom", receivers)
 
         # self.sendTextMsg(content, receivers)

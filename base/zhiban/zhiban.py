@@ -21,7 +21,7 @@ class DutyScheduler:
         next_week_dates = [(today + timedelta(days=i)).date() for i in range(1, 8)]  # 转换为仅日期
 
         # 找到今天的值班信息
-        today_str = today.strftime('%Y-%m-%d')
+        today_str = today.strftime('%Y年%m月%d日')
         today_info = df[df['日期'].dt.date == today.date()]  # 比较时不考虑时间部分
 
         # 将星期几转换为汉字
@@ -29,7 +29,8 @@ class DutyScheduler:
         chinese_weekday = weekdays[today.weekday()]
 
         output = []
-
+        on_duty_person = ""
+        remarks = ""
         if not today_info.empty:
             on_duty_person = today_info.iloc[0]['值班人']
             on_duty_person_id = person_id_map.get(on_duty_person, '未知')  # 获取值班人的ID，如果没有则默认为'未知'
@@ -52,12 +53,15 @@ class DutyScheduler:
             weekday = weekdays[row['日期'].weekday()]
             remark = row['备注'] if isinstance(row['备注'], str) and '接口值班' in row['备注'] else ''
             remark_text = f" 备注：{remark}" if remark else ""
-            output.append(f"{row['日期'].strftime('%Y-%m-%d')} 星期{weekday} - {row['值班人']}{remark_text}")
+            output.append(f"{row['日期'].strftime('%Y年%m月%d日')} 星期{weekday} - {row['值班人']}{remark_text}")
 
         # 返回结果
         result = {
             "content": "\n".join(output),
-            "id": on_duty_person_id
+            "id": on_duty_person_id,
+            "name": on_duty_person,
+            "remarks": remarks,
+            "date": today.strftime('%Y年%m月%d日')
         }
 
         return result
@@ -94,7 +98,7 @@ class DutyScheduler:
             weekday = ["一", "二", "三", "四", "五", "六", "日"][row['日期'].weekday()]
             remark = row['备注'] if isinstance(row['备注'], str) and '接口值班' in row['备注'] else ''
             remark_text = f" 备注：{remark}" if remark else ""
-            output.append(f"{row['日期'].strftime('%Y-%m-%d')} 星期{weekday} - {row['值班人']}{remark_text}")
+            output.append(f"{row['日期'].strftime('%Y年%m月%d日')} 星期{weekday} - {row['值班人']}{remark_text}")
 
         result = {
             "content": f"{person_name} 本月剩余值班信息如下：\n" + "\n".join(
@@ -131,7 +135,7 @@ class DutyScheduler:
             weekday = ["一", "二", "三", "四", "五", "六", "日"][row['日期'].weekday()]
             remark = row['备注'] if isinstance(row['备注'], str) and '接口值班' in row['备注'] else ''
             remark_text = f" 备注：{remark}" if remark else ""
-            output.append(f"{row['日期'].strftime('%Y-%m-%d')} 星期{weekday} - {row['值班人']}{remark_text}")
+            output.append(f"{row['日期'].strftime('%Y年%m月%d日')} 星期{weekday} - {row['值班人']}{remark_text}")
 
         result = {
             "content": "本月全部值班信息如下：\n" + "\n".join(output) if output else "没有找到相关的值班信息。",
