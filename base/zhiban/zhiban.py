@@ -1,13 +1,15 @@
 import pandas as pd
 from datetime import datetime, timedelta
 from configuration import Config
-
+import os
 class DutyScheduler:
     def __init__(self, config: Config) -> None:
         self.config = config
         self.people = self.config.zhiban['people']
     def get_duty_info(self):
-        file_path="E:/project/pyProject/WeChatRobot/base/zhiban/值班表.xlsx"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # 构建目标文件的路径
+        file_path = os.path.join(script_dir, "值班表.xlsx")
         # 创建值班人和ID的映射字典
         person_id_map = self.people
 
@@ -63,7 +65,9 @@ class DutyScheduler:
 
     # 新增：通过人员ID查询未来值班的方法
     def get_future_duty_by_id(self,person_id):
-        file_path = "E:/project/pyProject/WeChatRobot/base/zhiban/值班表.xlsx"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # 构建目标文件的路径
+        file_path = os.path.join(script_dir, "值班表.xlsx")
         person_id_map = self.people
 
         # 反转字典，以便通过ID查找姓名
@@ -103,7 +107,9 @@ class DutyScheduler:
 
     # 新增：查询本月全部值班信息的方法
     def get_monthly_duty_info(self):
-        file_path = "E:/project/pyProject/WeChatRobot/base/zhiban/值班表.xlsx"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # 构建目标文件的路径
+        file_path = os.path.join(script_dir, "值班表.xlsx")
 
         df = pd.read_excel(file_path, header=1, parse_dates=['日期'])
 
