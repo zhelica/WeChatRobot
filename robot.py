@@ -248,8 +248,8 @@ class Robot(Job):
         if rsp:
             if song_name:
                 print("发送--------------------------------"+rsp)
-                self.wcf.forward_msg(5342065067458527220,msg.roomid)
-                # num = self.wcf.send_xml(msg.roomid, rsp, 3,None)  # 使用 handle_music 返回的结果
+                # self.wcf.forward_msg(5342065067458527220,msg.roomid)
+                num = self.wcf.send_xml(msg.roomid, rsp, 0x21,None)  # 使用 handle_music 返回的结果
                 # print(f"返回值============{num}")
             elif msg.from_group():
                 self.sendTextMsg(rsp, msg.roomid, msg.sender)
